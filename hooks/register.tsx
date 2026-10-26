@@ -1,8 +1,8 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Activity, AgentView, LogEntry, Office } from '../types'
-import { drawOffice } from './office'
+import type { Activity, AgentView, LogEntry, Office, Usage } from '../types'
+import { drawOffice, usageLine } from './office'
 import { callDetails } from './redact'
 
 // A tool call the log records: its tool_use_id and its arguments.
@@ -109,6 +109,19 @@ async function setActivity(
   }))
 }
 
+// The boards beside the main desk. Read without a breakdown, which is free;
+// written only when a figure changed, as every write redraws the pane.
+async function refreshUsage($: EngineInterface) {
+  const { context, rateLimits } = await $.session.usage()
+  const usage: Usage = {
+    context: { tokens: context.tokens, window: context.window, percent: context.percent },
+    limits: rateLimits.map(({ kind, percentUsed, resetsAt }) => ({ kind, percentUsed, resetsAt })),
+  }
+  const { usage: shown } = await read($, office)
+  if (JSON.stringify(shown) === JSON.stringify(usage)) return
+  await update($, office, value => ({ ...value, usage }))
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -116,8 +129,10 @@ export const register: Register = on => {
       description: 'Show the agents of this session as pixel characters',
     })
     void $.ui.open({ id: PANE, title: 'Pixel Office' })
+    const started = await next(e)
+    await refreshUsage($)
 
-    return next(e)
+    return started
   })
 
   on('command.run', { command: 'pixel-office' }, async $ => {
@@ -135,8 +150,10 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const ended: Activity = e.agentId === undefined ? 'idle' : e.isAborted ? 'failed' : 'done'
     await setActivity($, e.agentId, ended)
+    const completed = await next(e)
+    if (e.agentId === undefined) await refreshUsage($)
 
-    return next(e)
+    return completed
   })
 
   // tool.check and turn.step mark a tool's start and end without holding a
@@ -156,15 +173,19 @@ export const register: Register = on => {
 
   // A model request after the first means the step's tools have all ended.
   // The classic PostToolUse can be passed by a plugin seated above this one.
+  // Once the main loop's response is in, its usage figures have moved.
   on('turn.step', async function* ($, e, next) {
     if (e.index > 0) await setActivity($, e.agentId, 'think')
+    const response = yield* next(e)
+    if (e.agentId === undefined) await refreshUsage($)
 
-    return yield* next(e)
+    return response
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button, Code } = $.ui.resolve(e)
-    const { agents: list, log: entries, open, page = 0, calls = entries.length } = await read($, office)
+    const { agents: list, log: entries, open, page = 0, calls = entries.length, usage } = await read($, office)
+    const now = await $.clock.now()
     const toggle = (id: string) => update($, office, value => ({ ...value, open: value.open === id ? undefined : id }))
     const pages = Math.max(1, Math.ceil(entries.length / PAGE))
     // The page shown, kept inside the log as the log changes.
@@ -264,6 +285,7 @@ export const register: Register = on => {
               {a.tool ? ` ${a.tool}` : ''}
             </Text>
           ))}
+          {usage && <Text dimColor>{usageLine(usage, now)}</Text>}
           {activity}
         </Box>
       )
@@ -273,7 +295,7 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column">
-        <Svg source={drawOffice(list)} alt={alt} />
+        <Svg source={drawOffice(list, usage, now)} alt={usage ? `${alt}. ${usageLine(usage, now)}` : alt} />
         {activity}
       </Box>
     )

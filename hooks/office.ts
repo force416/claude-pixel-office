@@ -1,4 +1,4 @@
-import type { Activity, AgentView } from '../types'
+import type { Activity, AgentView, Usage } from '../types'
 import { CLAWD, CREATURES } from './creatures'
 import type { Creature } from './creatures'
 
@@ -29,25 +29,6 @@ const DOTS: Record<Activity, string> = {
   done: '#9aa0b5',
   failed: '#e5534b',
 }
-
-// The plant sprite: '.' transparent.
-const PLANT = [
-  '...kkkkkk...',
-  '..kggggGgk..',
-  '.kgggGgggggk',
-  'kggGgggggGgk',
-  'kgggggGggggk',
-  'kgGggggggGgk',
-  '.kgggGgggggk',
-  '..kgggggGgk.',
-  '...kkgggkk..',
-  '..kkkkkkkk..',
-  '..kppppppk..',
-  '..kppppPpk..',
-  '...kppppk...',
-  '...kppppk...',
-  '...kkkkkk...',
-]
 
 const GLYPHS: Partial<Record<Activity, string[]>> = {
   read: ['.##..', '#..#.', '#..#.', '.##..', '....#'],
@@ -175,7 +156,6 @@ const defs = (cast: Creature[]): string =>
   rect(11, 10, 1, 1, '#c9ccd6') +
   `</pattern>` +
   `<filter id="pa-grey"><feColorMatrix type="saturate" values="0"/></filter>` +
-  sprite('pa-plant', PLANT, { k: INK, g: '#4caf50', G: '#2e7d32', p: '#c0703f', P: '#9a5530' }) +
   cast.map(c => sprite(`pa-${c.id}`, c.rows, c.palette)).join('') +
   sprite('pa-halo', halo(CLAWD.rows), { g: '#fff1d6' }) +
   DESK +
@@ -363,7 +343,96 @@ function wall(w: number, count: number): string {
   )
 }
 
-export function drawOffice(list: AgentView[]): string {
+const FONT = 'font-family="Inter,Helvetica,Arial,sans-serif"'
+
+// 569172 -> 569.2k, 1000000 -> 1M.
+function tokens(n: number): string {
+  if (n >= 1e6) return `${Number((n / 1e6).toFixed(1))}M`
+  if (n >= 1e3) return `${Number((n / 1e3).toFixed(1))}k`
+  return String(n)
+}
+
+const LIMIT_NAMES: Record<string, string> = { five_hour: 'Session', seven_day: 'Weekly', spend_limit: 'Spend' }
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// When a window resets: "4h 50m" within a day, else "Wed 07:00".
+function resets(at: string | undefined, now: number): string {
+  const when = at === undefined ? NaN : Date.parse(at)
+  if (Number.isNaN(when)) return ''
+  const minutes = Math.max(0, Math.round((when - now) / 60000))
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+  const date = new Date(when)
+  return `${DAYS[date.getDay()]} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+const contextPercent = (usage: Usage): number | undefined =>
+  usage.context.percent ?? (usage.context.tokens === undefined ? undefined : Math.round((usage.context.tokens / usage.context.window) * 100))
+
+// The usage figures as one line, for the terminal and the drawing's alt text.
+export function usageLine(usage: Usage, now: number): string {
+  const percent = contextPercent(usage)
+  const parts = [`Context ${percent === undefined ? '—' : `${percent}%`}`]
+  for (const limit of usage.limits) {
+    const reset = resets(limit.resetsAt, now)
+    parts.push(`${LIMIT_NAMES[limit.kind] ?? limit.kind} ${limit.percentUsed}%${reset ? ` (resets ${reset})` : ''}`)
+  }
+  return parts.join(' · ')
+}
+
+// A board on two legs, its face (x, y, w, h), with a header label.
+function board(x: number, y: number, w: number, h: number, title: string): string {
+  return (
+    rect(x + 6, y + h, 2, 4, INK) +
+    rect(x + w - 8, y + h, 2, 4, INK) +
+    rect(x, y, w, h, INK) +
+    rect(x + 1, y + 1, w - 2, h - 2, '#1f2130') +
+    rect(x + 1, y + 1, w - 2, 7, '#2a2d3e') +
+    `<text x="${x + 4}" y="${y + 6}" ${FONT} font-size="4.4" font-weight="700" fill="#9aa0b5" shape-rendering="geometricPrecision">${title}</text>`
+  )
+}
+
+// A progress bar: a dark track and a fill for `percent`.
+function bar(x: number, y: number, w: number, percent: number, color: string): string {
+  const filled = Math.round((w * Math.min(100, Math.max(0, percent))) / 100)
+  return rect(x, y, w, 3, '#3b3e4f') + (filled > 0 ? rect(x, y, filled, 3, color) : '')
+}
+
+const text = (x: number, y: number, size: number, fill: string, value: string, extra = ''): string =>
+  `<text x="${x}" y="${y}" ${FONT} font-size="${size}" fill="${fill}" shape-rendering="geometricPrecision"${extra}>${escape(value)}</text>`
+
+// The context window board: the percentage large, the tokens, a bar.
+function contextBoard(usage: Usage | undefined, x: number, y: number): string {
+  const w = 50
+  const percent = usage ? contextPercent(usage) : undefined
+  const { tokens: used, window } = usage?.context ?? { window: 0 }
+  return (
+    board(x, y, w, 40, 'CONTEXT') +
+    text(x + 4, y + 21, 10, '#ef8a3a', percent === undefined ? '—' : `${percent}%`, ' font-weight="700"') +
+    text(x + 4, y + 29, 4.4, '#9aa0b5', used === undefined || window === 0 ? '' : `${tokens(used)} / ${tokens(window)}`) +
+    bar(x + 4, y + 33, w - 8, percent ?? 0, '#5b8def')
+  )
+}
+
+// The rate-limit board: one row per window, each a name, a percentage, a bar
+// and when it resets.
+function limitsBoard(usage: Usage | undefined, now: number, x: number, y: number): string {
+  const w = 50
+  const limits = usage?.limits.slice(0, 2) ?? []
+  const rows = limits
+    .map((limit, i) => {
+      const top = y + 11 + i * 15
+      return (
+        text(x + 4, top + 3, 4.4, '#e6e8ef', LIMIT_NAMES[limit.kind] ?? limit.kind, ' font-weight="600"') +
+        text(x + w - 4, top + 3, 4.4, '#e6e8ef', `${limit.percentUsed}%`, ' text-anchor="end"') +
+        bar(x + 4, top + 5, w - 8, limit.percentUsed, '#5b8def') +
+        text(x + 4, top + 12.5, 3.8, '#8a8fa6', resets(limit.resetsAt, now))
+      )
+    })
+    .join('')
+  return board(x, y, w, 40, 'USAGE') + (rows || text(x + 4, y + 22, 4.4, '#8a8fa6', 'no reading yet'))
+}
+
+export function drawOffice(list: AgentView[], usage?: Usage, now = 0): string {
   const main = list.find(a => a.id === 'main')
   const subs = list.filter(a => a.id !== 'main').slice(-MAX_SUBS)
   const cast = [...new Set([...(main ? [main] : []), ...subs].map(creatureOf))]
@@ -389,8 +458,8 @@ export function drawOffice(list: AgentView[]): string {
     rect(rugX + 1, mainTop + 3, W - 6, H - 4, '#6f7fbf') +
     rect(rugX + 3, mainTop + 5, W - 10, H - 8, '#8391cc') +
     rect(rugX + 4, mainTop + 6, W - 12, H - 10, '#6f7fbf') +
-    use('pa-plant', M + 10, mainTop + 20) +
-    use('pa-plant', w - M - 22, mainTop + 20) +
+    contextBoard(usage, M + 5, mainTop + 8) +
+    limitsBoard(usage, now, M + 2 * W + 5, mainTop + 8) +
     (main ? station(main, M + W, mainTop) : '') +
     desks +
     empty +

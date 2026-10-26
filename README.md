@@ -9,6 +9,10 @@ working in a small office, in a pane beside the chat.
 name tags, animates the characters and keeps an activity log below.*
 
 - The main agent is Claude's orange mascot, at its own desk on a rug.
+- Two boards stand beside the main desk: CONTEXT shows how full the context
+  window is, and USAGE shows the session (five-hour) and weekly rate limits
+  with when each resets. They refresh after each of the main agent's model
+  responses.
 - Each subagent gets one of twelve original pocket creatures and a desk of
   its own, picked by its id.
 - What a character does follows its tool calls: code on screen while it

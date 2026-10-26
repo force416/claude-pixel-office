@@ -24,15 +24,31 @@ const ACTIVITIES: Activity[] = ['type', 'read', 'shell', 'web', 'delegate', 'too
 // $.tool.check is a query with no tool_use_id, so the tool paths and the log
 // rows are checked in a live session; these cover the drawing.
 
+const NOW = Date.parse('2026-10-26T02:10:00Z')
+
 test('the pane draws an office on remote surfaces and text on the terminal', async ($, on) => {
   on('command.register', () => ({ value: { command: 'pixel-office' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('clock.now', () => ({ value: NOW }))
+  on('session.usage', () => ({
+    value: {
+      startedAt: NOW,
+      context: { tokens: 569172, window: 1000000, percent: 57 },
+      rateLimits: [
+        { kind: 'five_hour', percentUsed: 5, resetsAt: '2026-10-26T07:00:00Z' },
+        { kind: 'seven_day', percentUsed: 13, resetsAt: '2026-10-28T23:00:00Z' },
+      ],
+    },
+  }))
 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
 
   const terminal = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await terminal.find({ type: 'Text', text: /^main/ }))?.text).toMatch(/閒置$/)
+  expect((await terminal.find({ type: 'Text', text: /^Context/ }))?.text).toMatch(
+    /^Context 57% · Session 5% \(resets 4h 50m\) · Weekly 13% \(resets \w{3} \d\d:\d\d\)$/,
+  )
   await terminal.unmount()
 
   for (const surface of ['desktop', 'vscode', 'mobile'] as const) {

@@ -31,10 +31,24 @@ export type LogEntry = {
   details?: { text: string; language: 'bash' | 'json' }
 }
 
+// The session's usage as the boards beside the main desk show it: the
+// context window, and each rate-limit window (`five_hour`, `seven_day`, ...).
+export type Usage = {
+  context: { tokens?: number; window: number; percent?: number }
+  limits: { kind: string; percentUsed: number; resetsAt?: string }[]
+}
+
 // One value, so one event is one write and one redraw. `open` is the id of
 // the log entry whose command is shown, `page` the log page shown (0 the
 // newest), `calls` every call logged this session, kept or not.
-export type Office = { agents: AgentView[]; log: LogEntry[]; open?: string; page?: number; calls?: number }
+export type Office = {
+  agents: AgentView[]
+  log: LogEntry[]
+  open?: string
+  page?: number
+  calls?: number
+  usage?: Usage
+}
 
 declare module 'claude-code' {
   interface PluginState {
