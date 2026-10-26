@@ -8,13 +8,13 @@ import { redact } from './redact'
 // A tool call the log records: its tool_use_id and its arguments.
 type Call = { id: string; input: unknown }
 
-const PANE = 'pixel-agents'
+const PANE = 'pixel-office'
 // The log keeps the newest KEPT calls and shows them PAGE at a time.
 const KEPT = 200
 const PAGE = 20
 const MAIN: AgentView = { id: 'main', label: 'main', type: 'main', activity: 'idle' }
 const INITIAL: Office = { agents: [MAIN], log: [] }
-const office = atom({ plugin: 'pixel-agents', key: 'office' } as const, INITIAL)
+const office = atom({ plugin: 'pixel-office', key: 'office' } as const, INITIAL)
 
 const WORDS: Record<Activity, string> = {
   type: '打字',
@@ -119,18 +119,18 @@ async function setActivity(
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
-      name: 'pixel-agents',
+      name: 'pixel-office',
       description: 'Show the agents of this session as pixel characters',
     })
-    void $.ui.open({ id: PANE, title: 'Pixel agents' })
+    void $.ui.open({ id: PANE, title: 'Pixel Office' })
 
     return next(e)
   })
 
-  on('command.run', { command: 'pixel-agents' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Pixel agents' })
+  on('command.run', { command: 'pixel-office' }, async $ => {
+    await $.ui.open({ id: PANE, title: 'Pixel Office' })
 
-    return { text: 'Pixel agents pane opened.' }
+    return { text: 'Pixel Office pane opened.' }
   })
 
   on('turn.start', async ($, e, next) => {

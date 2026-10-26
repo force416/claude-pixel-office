@@ -5,11 +5,11 @@ import { redact } from '../hooks/redact'
 import type { Activity, AgentView } from '../types'
 
 const PANE = {
-  plugin: 'pixel-agents',
+  plugin: 'pixel-office',
   component: 'Pane',
-  requestId: 'pixel-agents',
+  requestId: 'pixel-office',
   props: {
-    title: 'Pixel agents',
+    title: 'Pixel Office',
     isFocused: false,
     bodyColumns: 60,
     placement: 'dock',
@@ -25,7 +25,7 @@ const ACTIVITIES: Activity[] = ['type', 'read', 'shell', 'web', 'delegate', 'too
 // rows are checked in a live session; these cover the drawing.
 
 test('the pane draws an office on remote surfaces and text on the terminal', async ($, on) => {
-  on('command.register', () => ({ value: { command: 'pixel-agents' } }))
+  on('command.register', () => ({ value: { command: 'pixel-office' } }))
   on('ui.open', () => ({ value: { isPlaced: true } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
 

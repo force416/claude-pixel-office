@@ -38,6 +38,6 @@ export type Office = { agents: AgentView[]; log: LogEntry[]; open?: string; page
 
 declare module 'claude-code' {
   interface PluginState {
-    'pixel-agents': { office: Office }
+    'pixel-office': { office: Office }
   }
 }

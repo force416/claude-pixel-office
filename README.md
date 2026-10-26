@@ -1,6 +1,6 @@
-# pixel-agents
+# claude-pixel-office
 
-A Claude Code mod that shows the agents of your session as pixel characters
+`pixel-office` is a Claude Code mod that shows the agents of your session as pixel characters
 working in a small office, in a pane beside the chat.
 
 <img src="docs/office.png" alt="The pixel office: Claude's mascot at the main desk, twelve creatures at their desks below, each screen showing what its agent is doing" width="384">
@@ -29,7 +29,7 @@ mobile app; the terminal shows a text list instead.
 At the prompt of a terminal session:
 
 ```
-/plugin install pixel-agents --marketplace force416/claude-pixel-office
+/plugin install pixel-office --marketplace force416/claude-pixel-office
 ```
 
 Answer `y` to add the marketplace, then pick a scope (user is first).
@@ -37,14 +37,17 @@ Answer `y` to add the marketplace, then pick a scope (user is first).
 From a shell:
 
 ```
-claude plugin install pixel-agents --marketplace force416/claude-pixel-office
+claude plugin install pixel-office --marketplace force416/claude-pixel-office
 ```
 
 In the desktop app, where `/plugin` does not run: click + next to the prompt
 box, then Plugins, Add marketplace with `force416/claude-pixel-office`, then
 Add plugin.
 
-The pane opens when a session starts. If you close it, run `/pixel-agents`.
+The pane opens when a session starts. If you close it, run `/pixel-office`.
+
+The plugin is named `pixel-office` rather than `claude-pixel-office` because
+plugin names starting with `claude-` are kept for Anthropic's own plugins.
 
 ## Notes
 

@@ -4,7 +4,7 @@
   "owner": { "name": "force416" },
   "plugins": [
     {
-      "name": "pixel-agents",
+      "name": "pixel-office",
       "source": "./",
       "description": "Shows the main agent and subagents of this session as pixel characters in an office pane."
     }
