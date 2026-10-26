@@ -3,6 +3,11 @@
 A Claude Code mod that shows the agents of your session as pixel characters
 working in a small office, in a pane beside the chat.
 
+<img src="docs/office.png" alt="The pixel office: Claude's mascot at the main desk, twelve creatures at their desks below, each screen showing what its agent is doing" width="384">
+
+*A static render of the office with every creature. The pane also draws
+name tags, animates the characters and keeps an activity log below.*
+
 - The main agent is Claude's orange mascot, at its own desk on a rug.
 - Each subagent gets one of twelve original pocket creatures and a desk of
   its own, picked by its id.
