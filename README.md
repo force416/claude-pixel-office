@@ -17,9 +17,11 @@ name tags, animates the characters and keeps an activity log below.*
   works, jumps with a red `!` while it waits for your permission, and turns
   grey when it is done.
 - Below the office, an activity log keeps the last 200 tool calls, 20 to a
-  page. A Bash row opens to show its command, with common secret shapes
-  (bearer tokens, `--password`, `sk-…`/`ghp_…` keys, `user:pass@` in URLs)
-  masked first. The masking is best effort.
+  page. Each row opens to show the call's arguments: a Bash command as shell,
+  anything else as JSON. Common secret shapes (bearer tokens, `--password`,
+  `sk-…`/`ghp_…` keys, `user:pass@` in URLs) and fields named like
+  `password`, `token` or `api_key` are masked first. The masking is best
+  effort, and only arguments are shown, not results.
 
 The office is drawn as SVG on the desktop app, the VS Code extension and the
 mobile app; the terminal shows a text list instead.

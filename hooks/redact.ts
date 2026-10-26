@@ -15,7 +15,27 @@ const RULES: [pattern: RegExp, replacement: string][] = [
 
 const MAX = 2000
 
+// Argument names whose value is a secret whatever it looks like.
+const SECRET_NAME = /password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|authorization|cookie/i
+
+const cut = (text: string): string => (text.length > MAX ? `${text.slice(0, MAX)}…` : text)
+
 export function redact(command: string): string {
-  const masked = RULES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), command)
-  return masked.length > MAX ? `${masked.slice(0, MAX)}…` : masked
+  return cut(RULES.reduce((text, [pattern, replacement]) => text.replace(pattern, replacement), command))
+}
+
+export type CallDetails = { text: string; language: 'bash' | 'json' }
+
+// A call's arguments, shown when its log row opens: a Bash command as shell,
+// anything else as JSON with every string masked, the whole cut to MAX.
+export function callDetails(tool: string, input: unknown): CallDetails | undefined {
+  if (typeof input !== 'object' || input === null) return undefined
+  const command = (input as Record<string, unknown>).command
+  if (tool === 'Bash' && typeof command === 'string') return { text: redact(command), language: 'bash' }
+  const json = JSON.stringify(
+    input,
+    (name, value: unknown) => (typeof value === 'string' ? (SECRET_NAME.test(name) ? '****' : redact(value)) : value),
+    2,
+  )
+  return json === '{}' ? undefined : { text: cut(json), language: 'json' }
 }

@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Activity, AgentView, LogEntry, Office } from '../types'
 import { drawOffice } from './office'
-import { redact } from './redact'
+import { callDetails } from './redact'
 
 // A tool call the log records: its tool_use_id and its arguments.
 type Call = { id: string; input: unknown }
@@ -46,13 +46,6 @@ function detailOf(input: unknown): string | undefined {
   return typeof path === 'string' ? path.split('/').pop() : undefined
 }
 
-// A Bash call's command, masked, for the log row that opens to show it.
-function commandOf(tool: string, input: unknown): string | undefined {
-  if (tool !== 'Bash' || typeof input !== 'object' || input === null) return undefined
-  const command = (input as Record<string, unknown>).command
-  return typeof command === 'string' ? redact(command) : undefined
-}
-
 async function logEntry($: EngineInterface, agent: AgentView, tool: string, call: Call): Promise<LogEntry> {
   const now = new Date(await $.clock.now())
   const at = [now.getHours(), now.getMinutes(), now.getSeconds()].map(n => String(n).padStart(2, '0')).join(':')
@@ -63,7 +56,7 @@ async function logEntry($: EngineInterface, agent: AgentView, tool: string, call
     detail: detailOf(call.input),
     isMain: agent.id === 'main',
     id: call.id,
-    command: commandOf(tool, call.input),
+    details: callDetails(tool, call.input),
   }
 }
 
@@ -187,13 +180,13 @@ export const register: Register = on => {
     const mono = isTerminal ? {} : ({ mono: true } as const)
     const digits = isTerminal ? {} : ({ mono: true, tabular: true } as const)
     // Newest first, the newest in bold; columns line up in the mono face. A
-    // Bash row opens to show its command.
+    // row opens to show its call's arguments.
     const rows = [...entries]
       .reverse()
       .slice(shown * PAGE, shown * PAGE + PAGE)
       .map((one, i) => {
         const [name, server] = toolName(one.tool)
-        const { id, command } = one
+        const { id, details } = one
         const isOpen = id !== undefined && id === open
         const row = (
           <Box gap={1}>
@@ -217,19 +210,19 @@ export const register: Register = on => {
                 {one.detail}
               </Text>
             )}
-            {id && command && (
-              <Button key={`cmd-${id}`} plain dimColor onPress={() => toggle(id)}>
+            {id && details && (
+              <Button key={`args-${id}`} plain dimColor onPress={() => toggle(id)}>
                 {isOpen ? '▾' : '▸'}
               </Button>
             )}
           </Box>
         )
-        if (!isOpen || !command) return row
+        if (!isOpen || !details) return row
         return (
           <Box flexDirection="column">
             {row}
             <Box marginLeft={2}>
-              <Code language="bash" source={command} wrap="wrap" />
+              <Code language={details.language} source={details.text} wrap="wrap" />
             </Box>
           </Box>
         )

@@ -1,7 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import { drawOffice } from '../hooks/office'
-import { redact } from '../hooks/redact'
+import { callDetails, redact } from '../hooks/redact'
 import type { Activity, AgentView } from '../types'
 
 const PANE = {
@@ -55,6 +55,20 @@ test('a logged command has the common secret shapes masked', () => {
 
   expect(redact('git status && ls -la src')).toBe('git status && ls -la src')
   expect(redact('x'.repeat(3000))).toHaveLength(2001)
+})
+
+test("a call's arguments open as shell or masked JSON", () => {
+  expect(callDetails('Bash', { command: 'ls --token=abc' })).toEqual({ text: 'ls --token=****', language: 'bash' })
+
+  const edit = callDetails('Edit', { file_path: '/a/b.ts', old_string: 'x', new_string: 'y' })
+  expect(edit?.language).toBe('json')
+  expect(JSON.parse(edit!.text)).toEqual({ file_path: '/a/b.ts', old_string: 'x', new_string: 'y' })
+
+  const mcp = callDetails('mcp__s__login', { user: 'me', password: 'hunter2', nested: { api_key: 'k', url: 'https://a:b@x.test' } })
+  expect(JSON.parse(mcp!.text)).toEqual({ user: 'me', password: '****', nested: { api_key: '****', url: 'https://a:****@x.test' } })
+
+  expect(callDetails('TaskList', {})).toBeUndefined()
+  expect(callDetails('Write', { content: 'x'.repeat(5000) })!.text).toHaveLength(2001)
 })
 
 test('a full office of every activity stays under the Svg source limit', () => {

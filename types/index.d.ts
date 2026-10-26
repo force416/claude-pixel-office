@@ -19,8 +19,8 @@ export type AgentView = {
   tool?: string
 }
 
-// `id`, `isMain` and `command` are absent on entries written before they
-// existed. `command` is a Bash call's command with secrets masked.
+// `details` is the call's arguments with secrets masked: a Bash command as
+// shell, anything else as JSON; absent for a call with none.
 export type LogEntry = {
   at: string
   who: string
@@ -28,7 +28,7 @@ export type LogEntry = {
   detail?: string
   isMain?: boolean
   id?: string
-  command?: string
+  details?: { text: string; language: 'bash' | 'json' }
 }
 
 // One value, so one event is one write and one redraw. `open` is the id of
