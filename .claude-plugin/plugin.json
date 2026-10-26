@@ -1,0 +1,7 @@
+{
+  "name": "pixel-agents",
+  "version": "0.1.0",
+  "description": "Shows the main agent and subagents of this session as pixel characters in an office pane",
+  "author": { "name": "force416" },
+  "types": "./types/index.d.ts"
+}

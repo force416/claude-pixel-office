@@ -1,0 +1,12 @@
+{
+  "name": "claude-pixel-office",
+  "description": "A Claude Code mod that shows your session's agents as pixel characters in an office.",
+  "owner": { "name": "force416" },
+  "plugins": [
+    {
+      "name": "pixel-agents",
+      "source": "./",
+      "description": "Shows the main agent and subagents of this session as pixel characters in an office pane."
+    }
+  ]
+}
